@@ -1,8 +1,11 @@
 from django.shortcuts import render,redirect
 from django.contrib.auth import authenticate,login,logout
 from django.contrib import messages 
-from .forms import SignUpForm
-from .models import Record
+from .forms import SignUpForm , AddrecordForm
+from .models import Record , React
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from .serializer import *
 
 # Create your views here.
 def home(request):
@@ -21,12 +24,14 @@ def home(request):
             return redirect("home")
     else:
         return render(request,"home.html",{'records':records})
-
+    
+# logout user
 def logout_user(request):
     logout(request)
     messages.success(request,"You are logged out.")
     return redirect("home")
 
+# register user
 def register_user(request):
     if request.method == 'POST':
         form = SignUpForm(request.POST)
@@ -43,3 +48,66 @@ def register_user(request):
         form = SignUpForm()            
         return render(request,"register.html",{'form':form}) 
     return render(request,"register.html",{'form':form}) 
+
+# customer record
+def customer_record(request,pk):
+    if request.user.is_authenticated:
+        customer_record = Record.objects.get(id=pk)
+        return render(request,"record.html",{'customer_record':customer_record}) 
+    else:
+        messages.success(request,"You Must logged in to view the page...")
+        return redirect("home")
+
+# delete record
+def delete_record(request,pk):
+    if request.user.is_authenticated:
+        delete_it = Record.objects.get(id=pk)
+        delete_it.delete()
+        messages.success(request,"Record Deleted Successfully.")
+        return redirect("home")
+    else:
+        messages.success(request,"You Must logged in to view the page...")
+        return redirect("home")
+  
+# add record  
+def add_record(request):
+    form = AddrecordForm(request.POST or None)
+    if request.user.is_authenticated:
+        if request.method == 'POST':
+            if form.is_valid():
+                add_record = form.save()
+                messages.success(request,"Record Added Successfully.")
+                return redirect("home")
+        return render(request,"add_record.html",{"form":form})
+    else:
+        messages.success(request,"You Must logged in to Add Record...")
+        return redirect("home")
+
+def update_record(request,pk):
+    if request.user.is_authenticated:
+        current_record = Record.objects.get(id=pk)
+        form = AddrecordForm(request.POST or None, instance=current_record)
+        if form.is_valid():
+                form.save()
+                messages.success(request,"Record Updated Successfully.")
+                return redirect("home")
+        return render(request,"update_record.html",{"form":form})
+    else:
+        messages.success(request,"You Must logged in to Update Record...")
+        return redirect("home")
+
+
+
+
+# Api view for connecting frontend and backend
+class ReactView(APIView):
+    def get(self,request):
+        queryset = React.objects.all()
+        serializer = ReactSerializer(queryset, many=True)
+        return Response(serializer.data)
+    
+    def post(self,request):
+        serializer = ReactSerializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response(serializer.data)

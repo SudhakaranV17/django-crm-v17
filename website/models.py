@@ -14,4 +14,9 @@ class Record(models.Model):
     
     def __str__(self):
         return (f"{self.first_name} {self.last_name}")
+
+class React(models.Model):
+    employee = models.CharField(max_length=45)
+    department = models.CharField(max_length=45)
+    
     
